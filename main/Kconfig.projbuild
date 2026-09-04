@@ -1,0 +1,19 @@
+# CONFIG_WIFI_SSID=REDACTED
+# CONFIG_WIFI_PASSWORD=REDACTED
+
+
+menu "Envirotracker"
+
+config ENVIROTRACKER_WIFI_SSID
+    string "Wi-Fi SSID"
+    default ""
+
+config ENVIROTRACKER_WIFI_PASSWORD
+    string "Wi-Fi password"
+    default ""
+
+config ENVIROTRACKER_DEVICE_ID
+    string "Unique device id"
+    default "unset"
+
+endmenu
