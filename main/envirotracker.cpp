@@ -25,7 +25,7 @@ static void dht_collect(void *param) {
     esp_err_t dht_err =
         dht_read_data(DHT_TYPE_DHT11, DHT_DATA_PIN, &hum, &temp);
 
-    vTaskDelay(pdMS_TO_TICKS(1000));
+    vTaskDelay(pdMS_TO_TICKS(5000));
     // dht_read_float_data(DHT_TYPE_DHT11, DHT_DATA_PIN, &hum_f, &temp_f);
     ESP_LOGI(DHT_TAG, "dht code: %s", esp_err_to_name(dht_err));
     if (dht_err == ESP_OK) {
@@ -63,6 +63,7 @@ extern "C" void app_main(void) {
     vTaskDelay(pdMS_TO_TICKS(5000));
   }
 
+  // config is mostly handled by DHT-drivers but keeping this just in case.
   gpio_config_t dht_config = {
       .pin_bit_mask = 1ULL << GPIO_NUM_3,
       .mode = GPIO_MODE_INPUT,
