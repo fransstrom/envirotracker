@@ -112,3 +112,5 @@ XUNIT_RESULT*.xml
 
 sdkconfig
 sdkconfig.old
+
+replacement.txt
