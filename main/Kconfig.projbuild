@@ -12,7 +12,7 @@ config ENVIROTRACKER_DEVICE_ID
     string "Unique device id"
     default "unset"
 
-config ENVIROTRACKER_MQTT_HOST
+config ENVIROTRACKER_MQTT_HOST_URI
     string "MQTT Host"
     default ""
 
