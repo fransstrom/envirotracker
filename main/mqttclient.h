@@ -11,9 +11,7 @@ public:
 
 private:
   static void eventHandler(void *context, esp_event_base_t base,
-                           int32_t event_id, void *event_data) {
-    ESP_LOGI("MQTT EVENT HANDLER", "Headerfile implementation or cpp?");
-  }
+                           int32_t event_id, void *event_data);
   void handleEvent(esp_mqtt_event_t &event);
   void handleData(const esp_mqtt_event_t &event);
   void resetClient();

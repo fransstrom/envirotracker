@@ -13,7 +13,7 @@ config ENVIROTRACKER_DEVICE_ID
     default "unset"
 
 config ENVIROTRACKER_MQTT_HOST_URI
-    string "MQTT Host"
+    string "MQTT broker URI (for example, mqtts://broker.example.com)"
     default ""
 
 config ENVIROTRACKER_MQTT_PORT
@@ -30,5 +30,5 @@ config ENVIROTRACKER_MQTT_PASSWORD
 
 config ENVIROTRACKER_MQTT_TLS
     bool "MQTT Via TLS"
-    default false
+    default y
 endmenu
