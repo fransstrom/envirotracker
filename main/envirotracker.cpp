@@ -6,6 +6,7 @@
 #include "freertos/idf_additions.h"
 #include "freertos/projdefs.h"
 #include "hal/gpio_types.h"
+#include "mqttclient.h"
 #include "portmacro.h"
 #include "sdkconfig.h"
 #include "wifi.h"
@@ -16,6 +17,7 @@
 #define DHT_DATA_PIN GPIO_NUM_3
 #define TAG "main"
 
+MqttClient mqttclient;
 static void dht_collect(void *param) {
   int16_t hum = 0;
   int16_t temp = 0;
@@ -38,7 +40,7 @@ static void dht_collect(void *param) {
 }
 
 extern "C" void app_main(void) {
-  ESP_LOGI(TAG, "Starting tutorial...");
+
   ESP_ERROR_CHECK(init());
 
   esp_err_t ret = connect(CONFIG_ENVIROTRACKER_WIFI_SSID,
@@ -63,16 +65,26 @@ extern "C" void app_main(void) {
     vTaskDelay(pdMS_TO_TICKS(5000));
   }
 
+  if (ret == ESP_OK) {
+    esp_err_t mqtt_err = mqttclient.start();
+    if (mqtt_err == ESP_OK) {
+      ESP_LOGI("MQTT", "connected? %s", esp_err_to_name(mqtt_err));
+    } else {
+      ESP_LOGI("MQTT", "failed to connect%s", esp_err_to_name(mqtt_err));
+    }
+  }
+
   // config is mostly handled by DHT-drivers but keeping this just in case.
   gpio_config_t dht_config = {
-      .pin_bit_mask = 1ULL << GPIO_NUM_3,
+      .pin_bit_mask = 1ULL << DHT_DATA_PIN,
       .mode = GPIO_MODE_INPUT,
       .pull_up_en = GPIO_PULLUP_ENABLE,
       .pull_down_en = GPIO_PULLDOWN_DISABLE,
       .intr_type = GPIO_INTR_DISABLE,
   };
+
   esp_err_t gpio_config_error = gpio_config(&dht_config);
-  ESP_LOGI(DHT_TAG, "gpio config%d", gpio_config_error);
+  ESP_LOGI(DHT_TAG, "gpio config%s", esp_err_to_name(gpio_config_error));
 
   BaseType_t result =
       xTaskCreate(dht_collect, "dht_collect", configMINIMAL_STACK_SIZE * 3,
