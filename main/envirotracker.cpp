@@ -13,8 +13,6 @@
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
-#include <format>
-#include <string>
 
 #define DHT_TAG "DHT"
 #define DHT_DATA_PIN GPIO_NUM_3
@@ -39,7 +37,7 @@ static void dht_collect(void *param) {
       // std::string json =
       // std::format("\"temp\":{},\"hum\":{}", temp / 10, hum / 19);
       char json[64];
-      snprintf(json, sizeof(json), "\"temp\":%d,\"hum\":%d", temp / 10,
+      snprintf(json, sizeof(json), "{\"temp\":%d,\"hum\":%d}", temp / 10,
                hum / 10);
       mqttclient.publish(json, "test");
 
@@ -83,7 +81,7 @@ extern "C" void app_main(void) {
       ESP_LOGI("MQTT", "failed to connect%s", esp_err_to_name(mqtt_err));
     }
   }
-
+  //
   // config is mostly handled by DHT-drivers but keeping this just in case.
   gpio_config_t dht_config = {
       .pin_bit_mask = 1ULL << DHT_DATA_PIN,

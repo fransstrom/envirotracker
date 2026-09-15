@@ -50,6 +50,31 @@ static void ip_event_cb(void *arg, esp_event_base_t event_base,
   }
 }
 
+static const char *wifi_reason_str(uint8_t reason) {
+  switch (reason) {
+  case 0:
+    return "NO_REAS";
+  case 2:
+    return "AUTH_EXPIRE";
+  case 15:
+    return "AUTH_TIMEOUT";
+  case 16:
+    return "AUTH_FAIL";
+  case 17:
+    return "HANDSHAKE_TIMEOUT";
+  case 18:
+    return "HANDSHAKE_FAILED";
+  case 21:
+    return "DISASSOC_BY_PEER";
+  case 201:
+    return "AP_NO_RESOURCE";
+  case 202:
+    return "AP_FULL";
+  default:
+    return "OTHER";
+  }
+}
+
 static void wifi_event_cb(void *arg, esp_event_base_t event_base,
                           int32_t event_id, void *event_data) {
   ESP_LOGI(TAG, "Handling Wi-Fi event, event code 0x%" PRIx32, event_id);
@@ -71,8 +96,11 @@ static void wifi_event_cb(void *arg, esp_event_base_t event_base,
   case (WIFI_EVENT_STA_CONNECTED):
     ESP_LOGI(TAG, "Wi-Fi connected");
     break;
-  case (WIFI_EVENT_STA_DISCONNECTED):
-    ESP_LOGI(TAG, "Wi-Fi disconnected");
+  case (WIFI_EVENT_STA_DISCONNECTED): {
+    wifi_event_sta_disconnected_t *e =
+        (wifi_event_sta_disconnected_t *)event_data;
+    ESP_LOGI(TAG, "Wi-Fi disconnected, reason=%d (%s)", e->reason,
+             wifi_reason_str(e->reason));
     if (wifi_retry_count < WIFI_RETRY_ATTEMPT) {
       ESP_LOGI(TAG, "Retrying to connect to Wi-Fi network...");
       esp_wifi_connect();
@@ -82,6 +110,7 @@ static void wifi_event_cb(void *arg, esp_event_base_t event_base,
       xEventGroupSetBits(s_wifi_event_group, WIFI_FAIL_BIT);
     }
     break;
+  }
   case (WIFI_EVENT_STA_AUTHMODE_CHANGE):
     ESP_LOGI(TAG, "Wi-Fi authmode changed");
     break;
@@ -138,6 +167,7 @@ esp_err_t init(void) {
 }
 
 esp_err_t connect(char *wifi_ssid, char *wifi_password) {
+  wifi_retry_count = 0;
   wifi_config_t wifi_config = {
       .sta =
           {
@@ -163,7 +193,8 @@ esp_err_t connect(char *wifi_ssid, char *wifi_password) {
 
   EventBits_t bits = xEventGroupWaitBits(s_wifi_event_group,
                                          WIFI_CONNECTED_BIT | WIFI_FAIL_BIT,
-                                         pdFALSE, pdFALSE, portMAX_DELAY);
+                                         pdFALSE, pdFALSE,
+                                         pdMS_TO_TICKS(60000));
 
   if (bits & WIFI_CONNECTED_BIT) {
     ESP_LOGI(TAG, "Connected to Wi-Fi network: %s", wifi_config.sta.ssid);
