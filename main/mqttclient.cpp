@@ -25,6 +25,10 @@ esp_err_t MqttClient::start() {
     return ESP_FAIL;
   }
 
+  if (event_group_ == nullptr) {
+    event_group_ = xEventGroupCreate();
+  }
+
   constexpr auto MQTT_ANY_EVENT =
       static_cast<esp_mqtt_event_id_t>(ESP_EVENT_ANY_ID);
 
@@ -44,7 +48,26 @@ esp_err_t MqttClient::start() {
   return err;
 }
 
-esp_err_t MqttClient::publish(const char *json_data, const char *topic) {
+esp_err_t MqttClient::waitForConnected(uint32_t timeout_ms) {
+  if (event_group_ == nullptr) {
+    return ESP_FAIL;
+  }
+
+  EventBits_t bits =
+      xEventGroupWaitBits(event_group_, MQTT_CONNECTED_BIT, pdFALSE, pdTRUE,
+                          pdMS_TO_TICKS(timeout_ms));
+  if (bits & MQTT_CONNECTED_BIT) {
+    connected_ = true;
+    return ESP_OK;
+  }
+
+  return ESP_FAIL;
+}
+
+int MqttClient::publish(const char *json_data, const char *topic) {
+  if (!connected_) {
+    return ESP_FAIL;
+  }
   esp_mqtt_client_publish(client_, topic, json_data, 0, 1, 0);
   return ESP_OK;
 }
@@ -68,9 +91,14 @@ void MqttClient::handleEvent(esp_mqtt_event_t &event) {
     break;
   case MQTT_EVENT_CONNECTED:
     ESP_LOGI(TAG, "Connected to MQTT broker");
+    connected_ = true;
+    if (event_group_ != nullptr) {
+      xEventGroupSetBits(event_group_, MQTT_CONNECTED_BIT);
+    }
     break;
   case MQTT_EVENT_DISCONNECTED:
     ESP_LOGW(TAG, "Disconnected from MQTT broker");
+    connected_ = false;
     break;
   case MQTT_EVENT_ERROR:
     if (event.error_handle == nullptr) {

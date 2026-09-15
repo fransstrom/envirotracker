@@ -24,23 +24,21 @@ static void dht_collect(void *param) {
   int16_t temp = 0;
 
   while (true) {
-    // ESP_LOGI(DHT_TAG, "Start loop");
     esp_err_t dht_err =
         dht_read_data(DHT_TYPE_DHT11, DHT_DATA_PIN, &hum, &temp);
-
     vTaskDelay(pdMS_TO_TICKS(5000));
-    // dht_read_float_data(DHT_TYPE_DHT11, DHT_DATA_PIN, &hum_f, &temp_f);
     ESP_LOGI(DHT_TAG, "dht code: %s", esp_err_to_name(dht_err));
     if (dht_err == ESP_OK) {
-      ESP_LOGI(DHT_TAG, "temp%d", temp / 10);
-      ESP_LOGI(DHT_TAG, "hum%d", hum / 10);
-      // std::string json =
-      // std::format("\"temp\":{},\"hum\":{}", temp / 10, hum / 19);
+      ESP_LOGI(DHT_TAG, "temp%d: ", temp / 10);
+      ESP_LOGI(DHT_TAG, "hum%d: ", hum / 10);
       char json[64];
       snprintf(json, sizeof(json), "{\"temp\":%d,\"hum\":%d}", temp / 10,
                hum / 10);
-      mqttclient.publish(json, "test");
+      esp_err_t pub = mqttclient.publish(json, "test");
 
+      if (pub != ESP_OK) {
+        ESP_LOGI(DHT_TAG, "publish skipped (%s)", esp_err_to_name(pub));
+      }
     } else {
       ESP_LOGI(DHT_TAG, "Failed to read data %s", esp_err_to_name(dht_err));
     }
@@ -49,19 +47,21 @@ static void dht_collect(void *param) {
 
 extern "C" void app_main(void) {
 
+  // Phase 0: base services
   ESP_ERROR_CHECK(init());
 
-  esp_err_t ret = connect(CONFIG_ENVIROTRACKER_WIFI_SSID,
-                          CONFIG_ENVIROTRACKER_WIFI_PASSWORD);
-  if (ret != ESP_OK) {
+  // Phase 1: Wi-Fi. connect() blocks until got-IP or fails.
+  if (connect(CONFIG_ENVIROTRACKER_WIFI_SSID,
+              CONFIG_ENVIROTRACKER_WIFI_PASSWORD) != ESP_OK) {
     ESP_LOGE(TAG, "Failed to connect to Wi-Fi network");
+    return;
   }
 
   wifi_ap_record_t ap_info;
-  ret = esp_wifi_sta_get_ap_info(&ap_info);
-  if (ret == ESP_ERR_WIFI_CONN) {
+  esp_err_t ap_info_ret = esp_wifi_sta_get_ap_info(&ap_info);
+  if (ap_info_ret == ESP_ERR_WIFI_CONN) {
     ESP_LOGE(TAG, "Wi-Fi station interface not initialized");
-  } else if (ret == ESP_ERR_WIFI_NOT_CONNECT) {
+  } else if (ap_info_ret == ESP_ERR_WIFI_NOT_CONNECT) {
     ESP_LOGE(TAG, "Wi-Fi station is not connected");
   } else {
     ESP_LOGI(TAG, "--- Access Point Information ---");
@@ -69,20 +69,20 @@ extern "C" void app_main(void) {
     ESP_LOG_BUFFER_CHAR("SSID", ap_info.ssid, sizeof(ap_info.ssid));
     ESP_LOGI(TAG, "Primary Channel: %d", ap_info.primary);
     ESP_LOGI(TAG, "RSSI: %d", ap_info.rssi);
-
-    vTaskDelay(pdMS_TO_TICKS(5000));
   }
 
-  if (ret == ESP_OK) {
-    esp_err_t mqtt_err = mqttclient.start();
-    if (mqtt_err == ESP_OK) {
-      ESP_LOGI("MQTT", "connected? %s", esp_err_to_name(mqtt_err));
-    } else {
-      ESP_LOGI("MQTT", "failed to connect%s", esp_err_to_name(mqtt_err));
-    }
+  // Phase 2: MQTT. start() is async, so wait for the actual connection.
+  if (mqttclient.start() != ESP_OK) {
+    ESP_LOGE("MQTT", "Failed to start MQTT client");
+    return;
   }
-  //
-  // config is mostly handled by DHT-drivers but keeping this just in case.
+  if (mqttclient.waitForConnected(30000) != ESP_OK) {
+    ESP_LOGW("MQTT", "Not connected within timeout; will retry on reconnect");
+  }
+
+  // Phase 3: DHT. Only configure the sensor and start collection now that the
+  // pipeline is up. publish() is guarded, so the loop is safe across
+  // reconnects.
   gpio_config_t dht_config = {
       .pin_bit_mask = 1ULL << DHT_DATA_PIN,
       .mode = GPIO_MODE_INPUT,
@@ -90,9 +90,8 @@ extern "C" void app_main(void) {
       .pull_down_en = GPIO_PULLDOWN_DISABLE,
       .intr_type = GPIO_INTR_DISABLE,
   };
-
-  esp_err_t gpio_config_error = gpio_config(&dht_config);
-  ESP_LOGI(DHT_TAG, "gpio config%s", esp_err_to_name(gpio_config_error));
+  ESP_ERROR_CHECK(gpio_config(&dht_config));
+  ESP_LOGI(DHT_TAG, "gpio config%s", esp_err_to_name(ESP_OK));
 
   BaseType_t result =
       xTaskCreate(dht_collect, "dht_collect", configMINIMAL_STACK_SIZE * 3,
