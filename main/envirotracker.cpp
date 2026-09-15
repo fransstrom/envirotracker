@@ -12,12 +12,15 @@
 #include "wifi.h"
 #include <cmath>
 #include <cstdint>
+#include <cstdio>
+#include <format>
+#include <string>
 
 #define DHT_TAG "DHT"
 #define DHT_DATA_PIN GPIO_NUM_3
 #define TAG "main"
 
-MqttClient mqttclient;
+static MqttClient mqttclient;
 static void dht_collect(void *param) {
   int16_t hum = 0;
   int16_t temp = 0;
@@ -33,6 +36,13 @@ static void dht_collect(void *param) {
     if (dht_err == ESP_OK) {
       ESP_LOGI(DHT_TAG, "temp%d", temp / 10);
       ESP_LOGI(DHT_TAG, "hum%d", hum / 10);
+      // std::string json =
+      // std::format("\"temp\":{},\"hum\":{}", temp / 10, hum / 19);
+      char json[64];
+      snprintf(json, sizeof(json), "\"temp\":%d,\"hum\":%d", temp / 10,
+               hum / 10);
+      mqttclient.publish(json, "test");
+
     } else {
       ESP_LOGI(DHT_TAG, "Failed to read data %s", esp_err_to_name(dht_err));
     }

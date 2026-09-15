@@ -44,6 +44,11 @@ esp_err_t MqttClient::start() {
   return err;
 }
 
+esp_err_t MqttClient::publish(const char *json_data, const char *topic) {
+  esp_mqtt_client_publish(client_, topic, json_data, 0, 1, 0);
+  return ESP_OK;
+}
+
 void MqttClient::eventHandler(void *context, esp_event_base_t base,
                               int32_t event_id, void *event_data) {
   auto *client = static_cast<MqttClient *>(context);
@@ -55,6 +60,9 @@ void MqttClient::eventHandler(void *context, esp_event_base_t base,
 
 void MqttClient::handleEvent(esp_mqtt_event_t &event) {
   switch (event.event_id) {
+  case MQTT_EVENT_PUBLISHED:
+    ESP_LOGI(TAG, "PUBLISHED EVENT");
+    break;
   case MQTT_EVENT_BEFORE_CONNECT:
     ESP_LOGI(TAG, "Connecting to MQTT broker...");
     break;

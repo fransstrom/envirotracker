@@ -4,10 +4,12 @@
 #include "esp_event_base.h"
 #include "esp_log.h"
 #include "mqtt_client.h"
+#include <string>
 
 class MqttClient {
 public:
   esp_err_t start();
+  int publish(const char *json_data, const char *topic);
 
 private:
   static void eventHandler(void *context, esp_event_base_t base,
