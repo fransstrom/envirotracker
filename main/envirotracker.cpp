@@ -29,8 +29,8 @@ static void dht_collect(void *param) {
     vTaskDelay(pdMS_TO_TICKS(5000));
     ESP_LOGI(DHT_TAG, "dht code: %s", esp_err_to_name(dht_err));
     if (dht_err == ESP_OK) {
-      ESP_LOGI(DHT_TAG, "temp%d: ", temp / 10);
-      ESP_LOGI(DHT_TAG, "hum%d: ", hum / 10);
+      ESP_LOGI(DHT_TAG, "temp: %d", temp / 10);
+      ESP_LOGI(DHT_TAG, "hum: %d", hum / 10);
       char json[64];
       snprintf(json, sizeof(json), "{\"temp\":%d,\"hum\":%d}", temp / 10,
                hum / 10);

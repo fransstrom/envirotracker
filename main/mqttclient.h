@@ -1,12 +1,5 @@
 #pragma once
-#include "esp_crt_bundle.h"
-#include "esp_err.h"
-#include "esp_event_base.h"
-#include "esp_log.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/event_groups.h"
 #include "mqtt_client.h"
-#include <string>
 
 class MqttClient {
 public:
@@ -14,6 +7,7 @@ public:
   esp_err_t waitForConnected(uint32_t timeout_ms);
   int publish(const char *json_data, const char *topic);
   bool isConnected() const { return connected_; }
+  ~MqttClient();
 
 private:
   static const int MQTT_CONNECTED_BIT = BIT0;

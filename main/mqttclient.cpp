@@ -1,9 +1,12 @@
 #include "mqttclient.h"
-
-#include <cstring>
-
+#include "esp_crt_bundle.h"
 #include "esp_err.h"
+#include "esp_event_base.h"
+#include "esp_log.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/event_groups.h"
 #include "mqtt_client.h"
+#include <cstring>
 
 #define TAG "mqtt"
 
@@ -133,5 +136,13 @@ void MqttClient::resetClient() {
   if (client_ != nullptr) {
     esp_mqtt_client_destroy(client_);
     client_ = nullptr;
+  }
+}
+
+MqttClient::~MqttClient() {
+  resetClient();
+  if (event_group_ != nullptr) {
+    vEventGroupDelete(event_group_);
+    event_group_ = nullptr;
   }
 }
